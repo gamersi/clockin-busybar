@@ -51,7 +51,11 @@ def format_compact_duration(seconds: int) -> str:
 
 
 def button_event(frame: dict[str, Any], button: str) -> str | None:
-    """Return PRESS or RELEASE for the configured physical button."""
+    """Return PRESS or RELEASE for the configured physical button.
+
+    PRESS is the protobuf enum's default value, so the BUSY Bar omits the
+    action field for press events.
+    """
     updates = frame.get("updates")
     if not isinstance(updates, list):
         return None
@@ -67,7 +71,8 @@ def button_event(frame: dict[str, Any], button: str) -> str | None:
             continue
         if str(event.get("button", "")).upper() != button.upper():
             continue
-        action = str(event.get("action", "")).upper()
+        raw_action = event.get("action")
+        action = "PRESS" if raw_action is None else str(raw_action).upper()
         if action in {"PRESS", "RELEASE"}:
             return action
     return None
@@ -192,6 +197,8 @@ class BusyBarController:
         self._state = ClockDisplayState(ClockMode.OFF, 0, 0)
         self._pressed_at: float | None = None
         self._pending_short_press: asyncio.Task[None] | None = None
+        self._long_press_task: asyncio.Task[None] | None = None
+        self._long_press_triggered = False
         self._action_lock = asyncio.Lock()
 
     async def run(self) -> None:
@@ -218,14 +225,29 @@ class BusyBarController:
                 continue
             action = button_event(frame, self.config.button)
             if action == "PRESS":
-                self._pressed_at = monotonic()
+                self._pressed()
             elif action == "RELEASE":
                 await self._released()
         raise RuntimeError("BUSY Bar status stream ended")
 
+    def _pressed(self) -> None:
+        if self._pressed_at is not None:
+            return
+
+        self._pressed_at = monotonic()
+        self._long_press_triggered = False
+        self._cancel_long_press()
+        self._long_press_task = asyncio.create_task(self._delayed_long_press())
+
     async def _released(self) -> None:
-        held_for = monotonic() - self._pressed_at if self._pressed_at else 0.0
+        if self._pressed_at is None:
+            return
+
+        held_for = monotonic() - self._pressed_at
         self._pressed_at = None
+        if self._long_press_triggered:
+            return
+        self._cancel_long_press()
         if held_for >= self.config.long_press_seconds:
             self._cancel_pending_short_press()
             await self._clock_out()
@@ -237,6 +259,19 @@ class BusyBarController:
             return
 
         self._pending_short_press = asyncio.create_task(self._delayed_short_press())
+
+    async def _delayed_long_press(self) -> None:
+        try:
+            await asyncio.sleep(self.config.long_press_seconds)
+            if self._pressed_at is None or self._long_press_triggered:
+                return
+            self._long_press_triggered = True
+            self._cancel_pending_short_press()
+            await self._clock_out()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("BUSY Bar long-press action failed")
 
     async def _delayed_short_press(self) -> None:
         await asyncio.sleep(self.config.double_press_window_seconds)
@@ -251,6 +286,11 @@ class BusyBarController:
         if self._pending_short_press and not self._pending_short_press.done():
             self._pending_short_press.cancel()
         self._pending_short_press = None
+
+    def _cancel_long_press(self) -> None:
+        if self._long_press_task and not self._long_press_task.done():
+            self._long_press_task.cancel()
+        self._long_press_task = None
 
     async def _toggle_pause(self) -> None:
         async with self._action_lock:

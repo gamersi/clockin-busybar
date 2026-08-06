@@ -350,7 +350,7 @@ def display_state(
 ) -> ClockDisplayState:
     event = data.get("currentEvent")
     task_id = event.get("taskId") if isinstance(event, dict) else None
-    if event is None:
+    if event is None or task_id == CLOCK_OUT_TASK_ID:
         mode = ClockMode.OFF
     elif task_id == WORK_TASK_ID:
         mode = ClockMode.WORKING

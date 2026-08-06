@@ -53,8 +53,12 @@ clockin display is cleared when the controller starts and when it exits,
 including when you stop it with Ctrl-C.
 `START` button is used by default:
 
-- Single press: clock in while off duty; pause while working; resume while on break.
-- Double press or hold for 1.2 seconds: clock out.
+- Single press and release: clock in while off duty; pause while working; resume while on break.
+- Double press: clock out.
+- Hold for 1.2 seconds: clock out, even before you release the button.
+
+After clocking out, the controller treats the clock-out event as off duty, so a
+single press can clock in again and double press or hold does nothing.
 
 Use `--busybar-button OK` or `--busybar-button BACK` if another physical button
 is more convenient. `--site` (or `CLOCKIN_SITE`) remains required so a bar press

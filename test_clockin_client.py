@@ -134,6 +134,12 @@ class ClientHelpersTest(unittest.TestCase):
         self.assertEqual(display_state({"targetSeconds": 27720}).mode, ClockMode.OFF)
         self.assertEqual(
             display_state(
+                {"targetSeconds": 27720, "currentEvent": {"taskId": 8}}
+            ).mode,
+            ClockMode.OFF,
+        )
+        self.assertEqual(
+            display_state(
                 {"targetSeconds": 27720, "currentEvent": {"taskId": 10}}
             ).mode,
             ClockMode.WORKING,
@@ -170,6 +176,13 @@ class ClientHelpersTest(unittest.TestCase):
 
         self.assertEqual(button_event(frame, "START"), "PRESS")
         self.assertIsNone(button_event(frame, "OK"))
+
+    def test_busybar_button_event_defaults_missing_action_to_press(self) -> None:
+        frame = {
+            "updates": [{"input": {"button_event": {"button": "START"}}}]
+        }
+
+        self.assertEqual(button_event(frame, "START"), "PRESS")
 
 
 class BusyBarControllerTest(unittest.IsolatedAsyncioTestCase):
@@ -331,6 +344,46 @@ class BusyBarControllerTest(unittest.IsolatedAsyncioTestCase):
         await controller._toggle_pause()
 
         self.assertEqual(recorded, ["clock-in"])
+
+    async def test_long_press_clocks_out_before_release(self) -> None:
+        clock_out = AsyncMock()
+        controller = BusyBarController(
+            BusyBarConfig(host="busybar.local", long_press_seconds=0.01),
+            status=AsyncMock(
+                return_value=ClockDisplayState(ClockMode.WORKING, 0, 27720)
+            ),
+            clock_in=AsyncMock(),
+            pause=AsyncMock(),
+            resume=AsyncMock(),
+            clock_out=clock_out,
+        )
+        controller._renderer = Mock()
+        controller._renderer.feedback = AsyncMock()
+        controller._renderer.render = AsyncMock()
+
+        controller._pressed()
+        await asyncio.sleep(0.02)
+        await controller._released()
+
+        clock_out.assert_awaited_once()
+
+    async def test_clock_out_is_ignored_when_off_duty(self) -> None:
+        clock_out = AsyncMock()
+        controller = BusyBarController(
+            BusyBarConfig(host="busybar.local"),
+            status=AsyncMock(return_value=ClockDisplayState(ClockMode.OFF, 0, 27720)),
+            clock_in=AsyncMock(),
+            pause=AsyncMock(),
+            resume=AsyncMock(),
+            clock_out=clock_out,
+        )
+        controller._renderer = Mock()
+        controller._renderer.feedback = AsyncMock()
+        controller._renderer.render = AsyncMock()
+
+        await controller._clock_out()
+
+        clock_out.assert_not_awaited()
 
 
 if __name__ == "__main__":
