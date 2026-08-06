@@ -1,0 +1,10 @@
+[project]
+name = "clockin"
+version = "0.1.0"
+description = "Busybar Integration for clockin.de"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "busylib>=1.0.0",
+    "requests>=2.31,<3",
+]
