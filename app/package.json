@@ -1,0 +1,29 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Clock in, pause and clock out on clockin.de from the BUSY Bar",
+  "author": "Simon",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc && tsc -p tsconfig.test.json",
+    "build": "busy-cli build",
+    "app:install": "busy-cli app install",
+    "app:uninstall": "busy-cli app uninstall",
+    "app:run": "busy-cli app run",
+    "app:stop": "busy-cli app stop",
+    "test": "node --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=24 <26"
+  },
+  "devDependencies": {
+    "@busy-app/cli": "^0.6.0",
+    "@types/node": "^24.19.2",
+    "typescript": "~6.0.3",
+    "vite": "8.1.4"
+  },
+  "dependencies": {
+    "@busy-app/busy-lib": "^0.21.1"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "format_version": 1,
+  "version": 1,
+  "fields": {
+    "email": {
+      "type": "string",
+      "label": "Email",
+      "description": "clockin.de login email address",
+      "default": "",
+      "max_length": 128
+    },
+    "password": {
+      "type": "string",
+      "label": "Password",
+      "description": "clockin.de login password",
+      "default": "",
+      "max_length": 128,
+      "sensitive": true
+    },
+    "site": {
+      "type": "string",
+      "label": "Site",
+      "description": "Site name or ID used for clock-in, e.g. Homeoffice. May stay empty if the account has only one site.",
+      "default": "",
+      "max_length": 64
+    },
+    "button": {
+      "type": "enum",
+      "label": "Button",
+      "description": "Physical button used to clock in, pause and clock out",
+      "default": "start",
+      "options": [
+        { "value": "start", "label": "Start" },
+        { "value": "ok", "label": "OK (wheel press)" },
+        { "value": "back", "label": "Back" }
+      ]
+    },
+    "poll_interval": {
+      "type": "integer",
+      "label": "Refresh, seconds",
+      "description": "How often the status is fetched from clockin.de. The time on screen keeps counting in between.",
+      "default": 60,
+      "min": 15,
+      "max": 900,
+      "step": 15
+    }
+  }
+}
